@@ -1,0 +1,8 @@
+{
+  "uuid": "ai-usage@serhii.local",
+  "name": "AI Usage Indicator",
+  "description": "Panel indicator for GitHub Copilot and Codex usage.",
+  "shell-version": ["45", "46", "47"],
+  "version": 1,
+  "url": ""
+}

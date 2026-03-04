@@ -1,0 +1,17 @@
+{
+  "plan_type": "codex-pro",
+  "windows": [
+    {
+      "limit": 1000,
+      "used": 200,
+      "reset_at": 1710000000,
+      "limit_window_seconds": 86400
+    },
+    {
+      "limit": 7000,
+      "used": 3500,
+      "reset_at": 1710600000,
+      "limit_window_seconds": 604800
+    }
+  ]
+}
