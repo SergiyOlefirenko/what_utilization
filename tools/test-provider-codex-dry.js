@@ -20,7 +20,7 @@ if (argvHas('--no-token')) {
   assertEqual(r.dailyPercent, 20);
   assertEqual(r.weeklyPercent, 50);
   assertEqual(calls.length, 1);
-  assertEqual(calls[0].url, 'https://api.openai.com/v1/usage/wham');
+  assertEqual(calls[0].url, 'https://chatgpt.com/backend-api/wham/usage');
   assertEqual(calls[0].headers.Authorization, 'Bearer test-token');
   assertEqual(calls[0].cancellable, cancellable);
 }

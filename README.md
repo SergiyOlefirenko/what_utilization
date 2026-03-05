@@ -76,7 +76,7 @@ with a real directory and break your linked development setup.
    gnome-extensions prefs ai-usage@serhii.local
    ```
 2. Save tokens in the keyring:
-   - Codex API token for `api.openai.com`.
+   - Codex token for `chatgpt.com/backend-api/wham/usage`.
    - GitHub token for Copilot usage endpoint access.
 3. Optionally disable either provider using `Enable Codex polling` / `Enable GitHub Copilot polling`.
 

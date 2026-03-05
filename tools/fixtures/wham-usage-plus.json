@@ -1,16 +1,19 @@
 {
-  "plan_type": "codex-plus",
-  "windows": [
-    {
-      "limit": 1000,
-      "used": 800,
-      "reset_at": 1710000000,
-      "limit_window_seconds": 86400
+  "plan_type": "plus",
+  "rate_limit": {
+    "allowed": true,
+    "limit_reached": false,
+    "primary_window": {
+      "used_percent": 7,
+      "limit_window_seconds": 18000,
+      "reset_after_seconds": 3731,
+      "reset_at": 1772727360
     },
-    {
-      "limit": 5000,
-      "used": 1000,
-      "reset_at": 1710500000
+    "secondary_window": {
+      "used_percent": 2,
+      "limit_window_seconds": 604800,
+      "reset_after_seconds": 590531,
+      "reset_at": 1773314160
     }
-  ]
+  }
 }
