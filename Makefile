@@ -12,6 +12,7 @@ test-core: compile-schemas
 	$(GJS) -m tools/test-metadata-settings-schema.js
 	$(GJS) -m tools/test-no-deprecated-imports.js
 	$(GJS) -m tools/test-no-secrets-in-settings.js
+	$(GJS) -m tools/test-secrets-schema-init.js
 	$(GJS) -m tools/test-parse-copilot.js
 	$(GJS) -m tools/test-parse-wham.js
 	$(GJS) -m tools/test-poller-backoff.js

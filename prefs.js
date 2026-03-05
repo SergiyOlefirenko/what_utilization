@@ -36,6 +36,8 @@ function makeProviderRow({ title, provider }) {
       await storeToken(provider, entry.text);
       entry.text = '';
     } catch (e) {
+      statusRow.subtitle = 'Keyring unavailable';
+      return;
     }
     await refreshStatus();
   });
@@ -44,6 +46,8 @@ function makeProviderRow({ title, provider }) {
     try {
       await clearToken(provider);
     } catch (e) {
+      statusRow.subtitle = 'Keyring unavailable';
+      return;
     }
     await refreshStatus();
   });
