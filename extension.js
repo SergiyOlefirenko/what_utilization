@@ -1,3 +1,4 @@
+import GObject from 'gi://GObject';
 import St from 'gi://St';
 import Gio from 'gi://Gio';
 import Clutter from 'gi://Clutter';
@@ -17,6 +18,7 @@ import { formatCodexStatus, formatCopilotStatus } from './lib/providerStatus.js'
 
 const SETTINGS_SCHEMA = 'org.gnome.shell.extensions.ai-usage';
 
+const AiUsageIndicator = GObject.registerClass(
 class AiUsageIndicator extends PanelMenu.Button {
   constructor() {
     super(0.0, 'AI Usage Indicator');
@@ -49,7 +51,7 @@ class AiUsageIndicator extends PanelMenu.Button {
     this._codexItem.label.text = formatCodexStatus(codex, enabled.codex);
     this._copilotItem.label.text = formatCopilotStatus(copilot, enabled.copilot);
   }
-}
+});
 
 export default class AiUsageExtension extends Extension {
   enable() {
