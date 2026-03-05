@@ -10,14 +10,89 @@ Shows a small panel label with:
 
 Tokens are stored in the system keyring (libsecret). No tokens are stored in GSettings.
 
-## Setup
+## Installation
 
-1. Install the extension in your GNOME Shell extensions directory.
-2. Open extension preferences.
-3. Save tokens in the keyring:
+Extension UUID: `ai-usage@serhii.local`
+
+### Option A: Local development install (symlink, recommended while developing)
+
+1. Clone this repository.
+2. Compile schemas:
+   ```bash
+   glib-compile-schemas schemas/
+   ```
+3. Create a symlink into your user extensions directory:
+   ```bash
+   mkdir -p ~/.local/share/gnome-shell/extensions
+   ln -sfn "$(pwd)" ~/.local/share/gnome-shell/extensions/ai-usage@serhii.local
+   ```
+4. Enable the extension:
+   ```bash
+   gnome-extensions enable ai-usage@serhii.local
+   ```
+5. Open preferences:
+   ```bash
+   gnome-extensions prefs ai-usage@serhii.local
+   ```
+
+Important: if your local extension install path is a symlink, do not run
+`gnome-extensions install --force` against it. That can replace the symlink
+with a real directory and break your linked development setup.
+
+### Option B: User install (copy files)
+
+1. Create install directory:
+   ```bash
+   mkdir -p ~/.local/share/gnome-shell/extensions/ai-usage@serhii.local
+   ```
+2. Copy repository files into it:
+   ```bash
+   cp -r . ~/.local/share/gnome-shell/extensions/ai-usage@serhii.local/
+   ```
+3. Compile schemas inside installed extension directory:
+   ```bash
+   glib-compile-schemas ~/.local/share/gnome-shell/extensions/ai-usage@serhii.local/schemas
+   ```
+4. Enable extension:
+   ```bash
+   gnome-extensions enable ai-usage@serhii.local
+   ```
+
+### Apply GNOME Shell changes
+
+- On X11: `Alt` + `F2`, type `r`, press Enter.
+- On Wayland: log out and log back in.
+
+## Initial setup
+
+1. Open extension preferences:
+   ```bash
+   gnome-extensions prefs ai-usage@serhii.local
+   ```
+2. Save tokens in the keyring:
    - Codex API token for `api.openai.com`.
    - GitHub token for Copilot usage endpoint access.
-4. Optionally disable either provider using `Enable Codex polling` / `Enable GitHub Copilot polling`.
+3. Optionally disable either provider using `Enable Codex polling` / `Enable GitHub Copilot polling`.
+
+## Removal (uninstall)
+
+### Remove from current user
+
+1. Disable the extension:
+   ```bash
+   gnome-extensions disable ai-usage@serhii.local
+   ```
+2. Delete installed extension directory/symlink:
+   ```bash
+   rm -rf ~/.local/share/gnome-shell/extensions/ai-usage@serhii.local
+   ```
+3. Apply GNOME Shell changes (restart shell on X11, re-login on Wayland).
+
+### Optional cleanup of stored tokens
+
+The extension stores tokens in the system keyring. If you want complete removal,
+delete these secrets in your keyring UI (`seahorse`) or clear them from extension
+preferences before uninstalling.
 
 ## Development
 
