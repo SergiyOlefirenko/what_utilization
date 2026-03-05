@@ -1,5 +1,6 @@
 {
   "uuid": "ai-usage@serhii.local",
+  "settings-schema": "org.gnome.shell.extensions.ai-usage",
   "name": "AI Usage Indicator",
   "description": "Panel indicator for GitHub Copilot and Codex usage.",
   "shell-version": ["48", "49", "50"],

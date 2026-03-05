@@ -119,6 +119,9 @@ GNOME 48 is the tested baseline. GNOME 49/50 are predeclared compatibility targe
 - If menu shows `auth failed`, re-save the token for that provider in Preferences.
 - If `gnome-extensions prefs ai-usage@serhii.local` shows `ImportError` mentioning `extensionUtils.js`,
   your installed files are stale. Re-copy/relink the full extension directory and re-login on Wayland.
+- If `gnome-extensions prefs ai-usage@serhii.local` shows
+  `Expected type string for argument 'schema_id' but got type undefined`,
+  your installed `metadata.json` is missing `settings-schema` or is stale; re-copy/relink the extension directory and re-login.
 - If `gnome-extensions enable ai-usage@serhii.local` says `Extension "... does not exist"`:
   - Verify directory path is exactly `~/.local/share/gnome-shell/extensions/ai-usage@serhii.local`.
   - Verify installed `metadata.json` has `"uuid": "ai-usage@serhii.local"`.

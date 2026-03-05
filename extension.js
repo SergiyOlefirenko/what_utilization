@@ -15,6 +15,8 @@ import { fetchCodexUsage } from './lib/providers/codex.js';
 import { fetchCopilotUsage } from './lib/providers/copilot.js';
 import { formatCodexStatus, formatCopilotStatus } from './lib/providerStatus.js';
 
+const SETTINGS_SCHEMA = 'org.gnome.shell.extensions.ai-usage';
+
 class AiUsageIndicator extends PanelMenu.Button {
   constructor() {
     super(0.0, 'AI Usage Indicator');
@@ -51,7 +53,7 @@ class AiUsageIndicator extends PanelMenu.Button {
 
 export default class AiUsageExtension extends Extension {
   enable() {
-    this._settings = this.getSettings();
+    this._settings = this.getSettings(SETTINGS_SCHEMA);
     this._indicator = new AiUsageIndicator();
     Main.panel.addToStatusArea(this.uuid, this._indicator);
     this._providerEnabled = this._readProviderEnabled();

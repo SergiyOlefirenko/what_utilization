@@ -6,6 +6,8 @@ import { ExtensionPreferences } from 'resource:///org/gnome/Shell/Extensions/js/
 
 import { lookupToken, storeToken, clearToken } from './lib/secrets.js';
 
+const SETTINGS_SCHEMA = 'org.gnome.shell.extensions.ai-usage';
+
 function makeProviderRow({ title, provider }) {
   const group = new Adw.PreferencesGroup({ title });
 
@@ -53,7 +55,7 @@ function makeProviderRow({ title, provider }) {
 
 export default class AiUsagePrefs extends ExtensionPreferences {
   fillPreferencesWindow(window) {
-    const settings = this.getSettings();
+    const settings = this.getSettings(SETTINGS_SCHEMA);
 
     const page = new Adw.PreferencesPage();
     window.add(page);
