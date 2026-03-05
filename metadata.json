@@ -2,7 +2,7 @@
   "uuid": "ai-usage@serhii.local",
   "name": "AI Usage Indicator",
   "description": "Panel indicator for GitHub Copilot and Codex usage.",
-  "shell-version": ["45", "46", "47"],
+  "shell-version": ["48", "49", "50"],
   "version": 1,
   "url": "https://github.com/SergiyOlefirenko/what_utilization"
 }

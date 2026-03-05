@@ -13,6 +13,7 @@ Tokens are stored in the system keyring (libsecret). No tokens are stored in GSe
 ## Installation
 
 Extension UUID: `ai-usage@serhii.local`
+Declared GNOME Shell compatibility: `48`, `49`, `50`.
 
 ### Option A: Local development install (symlink, recommended while developing)
 
@@ -45,15 +46,20 @@ with a real directory and break your linked development setup.
    ```bash
    mkdir -p ~/.local/share/gnome-shell/extensions/ai-usage@serhii.local
    ```
-2. Copy repository files into it:
+2. From repository root, copy required extension files into it:
    ```bash
-   cp -r . ~/.local/share/gnome-shell/extensions/ai-usage@serhii.local/
+   cp -r metadata.json extension.js prefs.js lib schemas ~/.local/share/gnome-shell/extensions/ai-usage@serhii.local/
    ```
-3. Compile schemas inside installed extension directory:
+3. Verify metadata path and UUID:
+   ```bash
+   test -f ~/.local/share/gnome-shell/extensions/ai-usage@serhii.local/metadata.json
+   grep -n '"uuid"' ~/.local/share/gnome-shell/extensions/ai-usage@serhii.local/metadata.json
+   ```
+4. Compile schemas inside installed extension directory:
    ```bash
    glib-compile-schemas ~/.local/share/gnome-shell/extensions/ai-usage@serhii.local/schemas
    ```
-4. Enable extension:
+5. Enable extension:
    ```bash
    gnome-extensions enable ai-usage@serhii.local
    ```
@@ -104,9 +110,19 @@ preferences before uninstalling.
 ## Notes
 
 These services are not official stable APIs. Changes on the provider side may break parsing.
+GNOME 48 is the tested baseline. GNOME 49/50 are predeclared compatibility targets.
 
 ## Troubleshooting
 
 - If you see `Settings schema not found`, run `glib-compile-schemas schemas/`.
 - If keyring test fails with secret-service connection errors, ensure a Secret Service is running.
 - If menu shows `auth failed`, re-save the token for that provider in Preferences.
+- If `gnome-extensions enable ai-usage@serhii.local` says `Extension "... does not exist"`:
+  - Verify directory path is exactly `~/.local/share/gnome-shell/extensions/ai-usage@serhii.local`.
+  - Verify installed `metadata.json` has `"uuid": "ai-usage@serhii.local"`.
+  - Verify current GNOME major version is in `"shell-version"` list.
+  - Check discovery output:
+    ```bash
+    gnome-extensions list | grep ai-usage@serhii.local
+    ```
+  - On Wayland, log out and log back in after install changes.
