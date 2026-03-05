@@ -1,4 +1,5 @@
 import Adw from 'gi://Adw';
+import Gio from 'gi://Gio';
 import Gtk from 'gi://Gtk';
 
 import { ExtensionPreferences } from 'resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js';
@@ -70,6 +71,20 @@ export default class AiUsagePrefs extends ExtensionPreferences {
     spin.connect('value-changed', () => settings.set_int('poll-interval-seconds', Math.round(spin.value)));
     intervalRow.add_suffix(spin);
     general.add(intervalRow);
+
+    const codexEnabledRow = new Adw.ActionRow({ title: 'Enable Codex polling' });
+    const codexEnabledSwitch = new Gtk.Switch({ valign: Gtk.Align.CENTER });
+    settings.bind('enable-codex', codexEnabledSwitch, 'active', Gio.SettingsBindFlags.DEFAULT);
+    codexEnabledRow.add_suffix(codexEnabledSwitch);
+    codexEnabledRow.activatable_widget = codexEnabledSwitch;
+    general.add(codexEnabledRow);
+
+    const copilotEnabledRow = new Adw.ActionRow({ title: 'Enable GitHub Copilot polling' });
+    const copilotEnabledSwitch = new Gtk.Switch({ valign: Gtk.Align.CENTER });
+    settings.bind('enable-copilot', copilotEnabledSwitch, 'active', Gio.SettingsBindFlags.DEFAULT);
+    copilotEnabledRow.add_suffix(copilotEnabledSwitch);
+    copilotEnabledRow.activatable_widget = copilotEnabledSwitch;
+    general.add(copilotEnabledRow);
 
     const codexGroup = makeProviderRow({ title: 'Codex', provider: 'codex' });
     const copilotGroup = makeProviderRow({ title: 'GitHub Copilot', provider: 'copilot' });

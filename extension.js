@@ -14,6 +14,7 @@ import { Poller } from './lib/poller.js';
 import { formatPanelLabel } from './lib/format.js';
 import { fetchCodexUsage } from './lib/providers/codex.js';
 import { fetchCopilotUsage } from './lib/providers/copilot.js';
+import { formatCodexStatus, formatCopilotStatus } from './lib/providerStatus.js';
 
 class AiUsageIndicator extends PanelMenu.Button {
   constructor() {
@@ -35,33 +36,17 @@ class AiUsageIndicator extends PanelMenu.Button {
     this.menu.addMenuItem(this._copilotItem);
   }
 
-  updateState(snapshot) {
+  updateState(snapshot, enabled = { codex: true, copilot: true }) {
     const codex = snapshot?.codex ?? null;
     const copilot = snapshot?.copilot ?? null;
 
-    const dailyPercent = codex?.ok ? codex.dailyPercent : null;
-    const weeklyPercent = codex?.ok ? codex.weeklyPercent : null;
-    const ghPercent = copilot?.ok ? copilot.usedPercent : null;
+    const dailyPercent = enabled.codex && codex?.ok ? codex.dailyPercent : null;
+    const weeklyPercent = enabled.codex && codex?.ok ? codex.weeklyPercent : null;
+    const ghPercent = enabled.copilot && copilot?.ok ? copilot.usedPercent : null;
 
     this._label.text = formatPanelLabel({ ghPercent, dailyPercent, weeklyPercent });
-
-    if (codex?.ok) {
-      const nextReset = codex.windows?.map(w => w.resetAtMs).filter(x => Number.isFinite(x)).sort()[0] ?? null;
-      const plan = codex.planType ?? 'unknown';
-      this._codexItem.label.text = `Codex: ${plan}${nextReset ? ` (next reset: ${new Date(nextReset).toISOString().slice(0, 10)})` : ''}`;
-    } else if (codex?.errorKind === 'not_configured') {
-      this._codexItem.label.text = 'Codex: not configured';
-    } else {
-      this._codexItem.label.text = 'Codex: --';
-    }
-
-    if (copilot?.ok) {
-      this._copilotItem.label.text = `Copilot: ${copilot.plan ?? 'unknown'}${copilot.resetDate ? ` (reset: ${copilot.resetDate})` : ''}`;
-    } else if (copilot?.errorKind === 'not_configured') {
-      this._copilotItem.label.text = 'Copilot: not configured';
-    } else {
-      this._copilotItem.label.text = 'Copilot: --';
-    }
+    this._codexItem.label.text = formatCodexStatus(codex, enabled.codex);
+    this._copilotItem.label.text = formatCopilotStatus(copilot, enabled.copilot);
   }
 }
 
@@ -70,26 +55,26 @@ export default class AiUsageExtension extends Extension {
     this._settings = getSettings();
     this._indicator = new AiUsageIndicator();
     Main.panel.addToStatusArea(this.uuid, this._indicator);
-
-    const providers = {
-      codex: ({ token, requestJson: rj }) => fetchCodexUsage({ token, requestJson: rj }),
-      copilot: ({ token, requestJson: rj }) => fetchCopilotUsage({ token, requestJson: rj }),
-    };
+    this._providerEnabled = this._readProviderEnabled();
 
     this._poller = new Poller({
-      providers,
+      providers: this._buildProviders(),
       lookupToken: async (name) => lookupToken(name),
       requestJson,
       intervalSeconds: this._settings.get_int('poll-interval-seconds'),
-      onUpdate: (name, result, snapshot) => this._indicator.updateState(snapshot),
+      onUpdate: (name, result, snapshot) => this._indicator.updateState(snapshot, this._providerEnabled),
       backoffBaseSeconds: 30,
     });
 
     this._settingsChangedId = this._settings.connect('changed', () => {
       const interval = this._settings.get_int('poll-interval-seconds');
+      this._providerEnabled = this._readProviderEnabled();
       this._poller.setIntervalSeconds(interval);
+      this._poller.setProviders(this._buildProviders());
+      this._indicator.updateState(this._poller.snapshot, this._providerEnabled);
     });
 
+    this._indicator.updateState(this._poller.snapshot, this._providerEnabled);
     this._poller.start();
   }
 
@@ -104,6 +89,33 @@ export default class AiUsageExtension extends Extension {
 
     this._indicator?.destroy();
     this._indicator = null;
+    this._providerEnabled = null;
     this._settings = null;
+  }
+
+  _readProviderEnabled() {
+    return {
+      codex: this._settings.get_boolean('enable-codex'),
+      copilot: this._settings.get_boolean('enable-copilot'),
+    };
+  }
+
+  _buildProviders() {
+    const providers = {};
+    if (this._providerEnabled?.codex) {
+      providers.codex = ({ token, requestJson: rj, cancellable }) => fetchCodexUsage({
+        token,
+        requestJson: rj,
+        cancellable,
+      });
+    }
+    if (this._providerEnabled?.copilot) {
+      providers.copilot = ({ token, requestJson: rj, cancellable }) => fetchCopilotUsage({
+        token,
+        requestJson: rj,
+        cancellable,
+      });
+    }
+    return providers;
   }
 }
