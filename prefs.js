@@ -4,7 +4,6 @@ import Gtk from 'gi://Gtk';
 
 import { ExtensionPreferences } from 'resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js';
 
-import { getSettings } from './lib/settings.js';
 import { lookupToken, storeToken, clearToken } from './lib/secrets.js';
 
 function makeProviderRow({ title, provider }) {
@@ -54,7 +53,7 @@ function makeProviderRow({ title, provider }) {
 
 export default class AiUsagePrefs extends ExtensionPreferences {
   fillPreferencesWindow(window) {
-    const settings = getSettings();
+    const settings = this.getSettings();
 
     const page = new Adw.PreferencesPage();
     window.add(page);

@@ -117,6 +117,8 @@ GNOME 48 is the tested baseline. GNOME 49/50 are predeclared compatibility targe
 - If you see `Settings schema not found`, run `glib-compile-schemas schemas/`.
 - If keyring test fails with secret-service connection errors, ensure a Secret Service is running.
 - If menu shows `auth failed`, re-save the token for that provider in Preferences.
+- If `gnome-extensions prefs ai-usage@serhii.local` shows `ImportError` mentioning `extensionUtils.js`,
+  your installed files are stale. Re-copy/relink the full extension directory and re-login on Wayland.
 - If `gnome-extensions enable ai-usage@serhii.local` says `Extension "... does not exist"`:
   - Verify directory path is exactly `~/.local/share/gnome-shell/extensions/ai-usage@serhii.local`.
   - Verify installed `metadata.json` has `"uuid": "ai-usage@serhii.local"`.

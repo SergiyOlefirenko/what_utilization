@@ -7,7 +7,6 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 
-import { getSettings } from './lib/settings.js';
 import { lookupToken } from './lib/secrets.js';
 import { requestJson } from './lib/http.js';
 import { Poller } from './lib/poller.js';
@@ -52,7 +51,7 @@ class AiUsageIndicator extends PanelMenu.Button {
 
 export default class AiUsageExtension extends Extension {
   enable() {
-    this._settings = getSettings();
+    this._settings = this.getSettings();
     this._indicator = new AiUsageIndicator();
     Main.panel.addToStatusArea(this.uuid, this._indicator);
     this._providerEnabled = this._readProviderEnabled();

@@ -9,6 +9,7 @@ test: test-core test-keyring
 
 test-core: compile-schemas
 	$(GJS) -m tools/test-format-panel-label.js
+	$(GJS) -m tools/test-no-deprecated-imports.js
 	$(GJS) -m tools/test-no-secrets-in-settings.js
 	$(GJS) -m tools/test-parse-copilot.js
 	$(GJS) -m tools/test-parse-wham.js
