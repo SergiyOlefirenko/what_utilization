@@ -20,11 +20,15 @@ const SETTINGS_SCHEMA = 'org.gnome.shell.extensions.ai-usage';
 
 const AiUsageIndicator = GObject.registerClass(
 class AiUsageIndicator extends PanelMenu.Button {
-  constructor() {
+  constructor(enabled = { codex: true, copilot: true }) {
     super(0.0, 'AI Usage Indicator');
 
     this._label = new St.Label({
-      text: formatPanelLabel(),
+      text: formatPanelLabel({
+        showGh: enabled.copilot,
+        showDaily: enabled.codex,
+        showWeekly: enabled.codex,
+      }),
       y_align: Clutter.ActorAlign.CENTER,
     });
     this.add_child(this._label);
@@ -47,7 +51,14 @@ class AiUsageIndicator extends PanelMenu.Button {
     const weeklyPercent = enabled.codex && codex?.ok ? codex.weeklyPercent : null;
     const ghPercent = enabled.copilot && copilot?.ok ? copilot.usedPercent : null;
 
-    this._label.text = formatPanelLabel({ ghPercent, dailyPercent, weeklyPercent });
+    this._label.text = formatPanelLabel({
+      ghPercent,
+      dailyPercent,
+      weeklyPercent,
+      showGh: enabled.copilot,
+      showDaily: enabled.codex,
+      showWeekly: enabled.codex,
+    });
     this._codexItem.label.text = formatCodexStatus(codex, enabled.codex);
     this._copilotItem.label.text = formatCopilotStatus(copilot, enabled.copilot);
   }
@@ -56,9 +67,9 @@ class AiUsageIndicator extends PanelMenu.Button {
 export default class AiUsageExtension extends Extension {
   enable() {
     this._settings = this.getSettings(SETTINGS_SCHEMA);
-    this._indicator = new AiUsageIndicator();
-    Main.panel.addToStatusArea(this.uuid, this._indicator);
     this._providerEnabled = this._readProviderEnabled();
+    this._indicator = new AiUsageIndicator(this._providerEnabled);
+    Main.panel.addToStatusArea(this.uuid, this._indicator);
 
     this._poller = new Poller({
       providers: this._buildProviders(),

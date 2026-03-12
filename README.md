@@ -78,7 +78,7 @@ with a real directory and break your linked development setup.
 2. Save tokens in the keyring:
    - Codex token for `chatgpt.com/backend-api/wham/usage`.
    - GitHub token for Copilot usage endpoint access.
-3. Optionally disable either provider using `Enable Codex polling` / `Enable GitHub Copilot polling`.
+3. Optionally disable either provider using `Enable Codex polling` / `Enable GitHub Copilot polling`; this also hides that provider's panel metrics.
 
 ## Removal (uninstall)
 
