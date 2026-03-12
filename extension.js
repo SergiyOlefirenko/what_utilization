@@ -27,6 +27,7 @@ function createIcon(iconPath, iconSize, styleClass = null) {
     gicon: new Gio.FileIcon({ file }),
     icon_size: iconSize,
     y_align: Clutter.ActorAlign.CENTER,
+    style: 'color: #ffffff;',
   };
 
   if (styleClass)
