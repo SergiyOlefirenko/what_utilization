@@ -1,11 +1,11 @@
 # AI Usage Indicator (GNOME Shell Extension)
 
-Shows a small panel label with remaining quota percent:
+Shows a small panel indicator with provider icons and remaining quota percent:
 
-`gh:<N>% d:<N>% w:<N>%`
+`[GitHub icon] gh:<N>% [Codex icon] 5h:<N>% w:<N>%`
 
 - `gh` is GitHub Copilot remaining percent
-- `d` is Codex daily remaining percent
+- `5h` is Codex short-window remaining percent
 - `w` is Codex weekly remaining percent
 
 Tokens are stored in the system keyring (libsecret). No tokens are stored in GSettings.
@@ -48,7 +48,7 @@ with a real directory and break your linked development setup.
    ```
 2. From repository root, copy required extension files into it:
    ```bash
-   cp -r metadata.json extension.js prefs.js lib schemas ~/.local/share/gnome-shell/extensions/ai-usage@serhii.local/
+   cp -r metadata.json extension.js prefs.js lib schemas assets ~/.local/share/gnome-shell/extensions/ai-usage@serhii.local/
    ```
 3. Verify metadata path and UUID:
    ```bash
@@ -77,7 +77,8 @@ with a real directory and break your linked development setup.
    ```
 2. Set up authentication:
    - In extension preferences, use `Sign in` under Codex to start the OpenAI browser login flow.
-   - Approve the login in your browser and return to extension preferences after the success page appears.
+   - The extension starts a temporary local callback on `http://localhost:1455/auth/callback` during sign-in.
+   - Approve the login in your browser and wait for the browser page to show the sign-in result.
    - Save your GitHub token for Copilot usage endpoint access in the extension keyring.
 3. Optionally disable either provider using `Enable Codex polling` / `Enable GitHub Copilot polling`; this also hides that provider's panel metrics.
 
@@ -119,6 +120,7 @@ GNOME 48 is the tested baseline. GNOME 49/50 are predeclared compatibility targe
 - If keyring test fails with secret-service connection errors, ensure a Secret Service is running.
 - If menu shows `Codex: sign in required`, open extension preferences and use `Sign in` under Codex.
 - If your browser does not open automatically, use `Open browser` in the Codex preferences section.
+- If the browser cannot reach `http://localhost:1455/auth/callback`, check whether a firewall, browser policy, or another local process is blocking port `1455`.
 - If Codex auth keeps expiring, sign out and complete the OpenAI browser login again so the extension can store a fresh refresh token.
 - If menu shows `auth failed`, re-save the Copilot token or reconnect Codex in Preferences.
 - If `gnome-extensions prefs ai-usage@serhii.local` shows `ImportError` mentioning `extensionUtils.js`,
