@@ -76,9 +76,9 @@ with a real directory and break your linked development setup.
    gnome-extensions prefs ai-usage@serhii.local
    ```
 2. Set up authentication:
-   - Run `codex login` in a terminal. The extension reads file-backed Codex CLI auth from `~/.codex/auth.json` when available.
+   - In extension preferences, use `Sign in` under Codex to start the OpenAI device-code login flow.
+   - Approve the login in your browser and enter the one-time code if prompted.
    - Save your GitHub token for Copilot usage endpoint access in the extension keyring.
-   - If Codex CLI auth is unavailable, you can save a fallback Codex token in extension preferences.
 3. Optionally disable either provider using `Enable Codex polling` / `Enable GitHub Copilot polling`; this also hides that provider's panel metrics.
 
 ## Removal (uninstall)
@@ -117,9 +117,9 @@ GNOME 48 is the tested baseline. GNOME 49/50 are predeclared compatibility targe
 
 - If you see `Settings schema not found`, run `glib-compile-schemas schemas/`.
 - If keyring test fails with secret-service connection errors, ensure a Secret Service is running.
-- If menu shows `Codex: run codex login`, run `codex login` in a terminal, then reopen preferences and press `Recheck`.
-- If Codex still does not connect after `codex login`, check whether `~/.codex/auth.json` exists. This build only auto-detects file-backed Codex CLI auth; otherwise use the fallback token field in Preferences.
-- If menu shows `auth failed`, re-save the Copilot token or refresh your Codex login/fallback token in Preferences.
+- If menu shows `Codex: sign in required`, open extension preferences and use `Sign in` under Codex.
+- If Codex auth keeps expiring, sign out and complete the OpenAI device-code login again so the extension can store a fresh refresh token.
+- If menu shows `auth failed`, re-save the Copilot token or reconnect Codex in Preferences.
 - If `gnome-extensions prefs ai-usage@serhii.local` shows `ImportError` mentioning `extensionUtils.js`,
   your installed files are stale. Re-copy/relink the full extension directory and re-login on Wayland.
 - If `gnome-extensions prefs ai-usage@serhii.local` shows

@@ -1,11 +1,21 @@
 import Adw from 'gi://Adw';
 import Gio from 'gi://Gio';
+import GLib from 'gi://GLib';
 import Gtk from 'gi://Gtk';
 
 import { ExtensionPreferences } from 'resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js';
 
 import { lookupToken, storeToken, clearToken } from './lib/secrets.js';
-import { getCodexCliAuthFilePath, readCodexAuthState } from './lib/codexCliAuth.js';
+import {
+  buildCodexStatus,
+  canOpenUris,
+  clearCodexAuth,
+  exchangeCodexAuthorizationCode,
+  loadCodexAuth,
+  openCodexVerificationUrl,
+  pollCodexDeviceCode,
+  requestCodexDeviceCode,
+} from './lib/codexAuth.js';
 
 const SETTINGS_SCHEMA = 'org.gnome.shell.extensions.ai-usage';
 
@@ -60,99 +70,198 @@ function makeTokenProviderRow({ title, provider, tokenTitle = 'Token' }) {
 
 function makeCodexRow() {
   const group = new Adw.PreferencesGroup({ title: 'Codex' });
-  const authFilePath = getCodexCliAuthFilePath();
-
   const statusRow = new Adw.ActionRow({ title: 'Authentication', subtitle: 'Checking...' });
   group.add(statusRow);
 
   const detailsRow = new Adw.ActionRow({
-    title: 'Codex CLI',
-    subtitle: `Run codex login in a terminal. This build reads ${authFilePath} when available.`,
+    title: 'OpenAI login',
+    subtitle: 'Click Sign in to start the device-code login flow in your browser.',
   });
   group.add(detailsRow);
 
-  const entryRow = new Adw.ActionRow({ title: 'Fallback token' });
-  const entry = new Gtk.PasswordEntry({ hexpand: true, show_peek_icon: true });
-  entryRow.add_suffix(entry);
-  group.add(entryRow);
+  const codeRow = new Adw.ActionRow({ title: 'One-time code', subtitle: 'Not requested' });
+  group.add(codeRow);
 
   const buttonsRow = new Adw.ActionRow({ title: 'Actions' });
-  const saveBtn = new Gtk.Button({ label: 'Save fallback' });
-  const clearBtn = new Gtk.Button({ label: 'Clear fallback' });
-  const recheckBtn = new Gtk.Button({ label: 'Recheck' });
-  buttonsRow.add_suffix(saveBtn);
-  buttonsRow.add_suffix(clearBtn);
-  buttonsRow.add_suffix(recheckBtn);
+  const signInBtn = new Gtk.Button({ label: 'Sign in' });
+  const openBrowserBtn = new Gtk.Button({ label: 'Open browser' });
+  const cancelBtn = new Gtk.Button({ label: 'Cancel' });
+  const signOutBtn = new Gtk.Button({ label: 'Sign out' });
+  buttonsRow.add_suffix(signInBtn);
+  buttonsRow.add_suffix(openBrowserBtn);
+  buttonsRow.add_suffix(cancelBtn);
+  buttonsRow.add_suffix(signOutBtn);
   group.add(buttonsRow);
 
-  async function refreshStatus() {
-    const state = await readCodexAuthState({ lookupFallbackToken: lookupToken });
+  let pendingLogin = null;
+  let pollTimeoutId = 0;
 
-    if (state.ok && state.source === 'cli') {
-      statusRow.subtitle = 'Connected via Codex CLI';
-      detailsRow.subtitle = state.path
-        ? `Using ${state.path}.`
-        : 'Using Codex CLI login.';
-      return;
+  function stopPolling() {
+    if (pollTimeoutId) {
+      GLib.Source.remove(pollTimeoutId);
+      pollTimeoutId = 0;
     }
-
-    if (state.ok && state.source === 'fallback') {
-      statusRow.subtitle = 'Connected via fallback token';
-      detailsRow.subtitle = 'Codex CLI login is unavailable, so the saved fallback token is in use.';
-      return;
-    }
-
-    if (state.errorKind === 'not_installed') {
-      statusRow.subtitle = 'Codex CLI not installed';
-      detailsRow.subtitle = 'Install Codex CLI or save a fallback token below.';
-      return;
-    }
-
-    if (state.errorKind === 'not_found') {
-      statusRow.subtitle = 'Codex CLI not logged in';
-      detailsRow.subtitle = `Run codex login in a terminal, or save a fallback token below. Expected file: ${authFilePath}`;
-      return;
-    }
-
-    if (state.errorKind === 'unsupported_auth_mode') {
-      statusRow.subtitle = 'Codex CLI auth mode unsupported';
-      detailsRow.subtitle = 'This build needs ChatGPT-based Codex login. API-key-only Codex auth will not work here.';
-      return;
-    }
-
-    if (state.errorKind === 'not_logged_in') {
-      statusRow.subtitle = 'Codex CLI login incomplete';
-      detailsRow.subtitle = `Re-run codex login, or save a fallback token below. File: ${authFilePath}`;
-      return;
-    }
-
-    statusRow.subtitle = 'Codex CLI auth unreadable';
-    detailsRow.subtitle = `Could not read ${authFilePath}. You can re-run codex login or use a fallback token below.`;
   }
 
-  saveBtn.connect('clicked', async () => {
+  function updateActionState(hasAuth) {
+    const pending = pendingLogin !== null;
+    signInBtn.sensitive = !pending;
+    openBrowserBtn.sensitive = pending && canOpenUris();
+    cancelBtn.sensitive = pending;
+    signOutBtn.sensitive = hasAuth;
+  }
+
+  function describeError(result, fallback) {
+    if (!result)
+      return fallback;
+    if (result.errorKind === 'network')
+      return 'Network error while talking to OpenAI.';
+    if (result.errorKind === 'unsupported')
+      return 'Device-code login is not enabled for this OpenAI auth server.';
+    if (result.errorKind === 'parse')
+      return 'OpenAI auth returned an unexpected response.';
+    if (result.errorKind === 'auth')
+      return 'Authentication failed. Please sign in again.';
+    if (result.errorKind === 'http')
+      return Number.isFinite(result.status) ? `OpenAI auth failed with HTTP ${result.status}.` : fallback;
+    return fallback;
+  }
+
+  async function refreshStatus(statusMessage = null) {
+    const auth = await loadCodexAuth();
+
+    if (pendingLogin) {
+      statusRow.subtitle = statusMessage ?? 'Waiting for approval';
+      detailsRow.subtitle = `Open ${pendingLogin.verificationUrl} and enter the one-time code below. Approval expires in about 15 minutes.`;
+      codeRow.subtitle = pendingLogin.userCode;
+      updateActionState(Boolean(auth));
+      return;
+    }
+
+    if (auth) {
+      statusRow.subtitle = statusMessage ?? buildCodexStatus(auth);
+      detailsRow.subtitle = 'Connected with OpenAI device login. Tokens are stored securely in the system keyring.';
+      codeRow.subtitle = 'Not needed';
+      updateActionState(true);
+      return;
+    }
+
+    statusRow.subtitle = statusMessage ?? 'Not connected';
+    detailsRow.subtitle = 'Click Sign in to start the OpenAI device-code login flow.';
+    codeRow.subtitle = 'Not requested';
+    updateActionState(false);
+  }
+
+  function schedulePoll(delaySeconds) {
+    stopPolling();
+    pollTimeoutId = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, Math.max(1, delaySeconds), () => {
+      pollTimeoutId = 0;
+      pollDeviceCode();
+      return GLib.SOURCE_REMOVE;
+    });
+  }
+
+  async function completeDeviceLogin(deviceToken) {
+    const exchanged = await exchangeCodexAuthorizationCode({
+      authorizationCode: deviceToken.authorizationCode,
+      codeVerifier: deviceToken.codeVerifier,
+    });
+
+    if (!exchanged.ok) {
+      pendingLogin = null;
+      await refreshStatus(describeError(exchanged, 'Could not finish OpenAI device login.'));
+      return;
+    }
+
+    pendingLogin = null;
+    await refreshStatus('Connected');
+  }
+
+  async function pollDeviceCode() {
+    if (!pendingLogin)
+      return;
+
+    if (pendingLogin.expiresAtMs <= Date.now()) {
+      pendingLogin = null;
+      await refreshStatus('Device code expired');
+      return;
+    }
+
+    const result = await pollCodexDeviceCode({
+      deviceAuthId: pendingLogin.deviceAuthId,
+      userCode: pendingLogin.userCode,
+    });
+
+    if (!pendingLogin)
+      return;
+
+    if (result.ok) {
+      await completeDeviceLogin(result);
+      return;
+    }
+
+    if (result.errorKind === 'pending') {
+      await refreshStatus();
+      schedulePoll(pendingLogin.intervalSeconds);
+      return;
+    }
+
+    pendingLogin = null;
+    await refreshStatus(describeError(result, 'Could not complete OpenAI device login.'));
+  }
+
+  signInBtn.connect('clicked', async () => {
+    stopPolling();
+    pendingLogin = null;
+    await refreshStatus('Requesting device code...');
+
+    const deviceCode = await requestCodexDeviceCode();
+    if (!deviceCode.ok) {
+      await refreshStatus(describeError(deviceCode, 'Could not start OpenAI device login.'));
+      return;
+    }
+
+    pendingLogin = deviceCode;
     try {
-      await storeToken('codex', entry.text);
-      entry.text = '';
+      if (canOpenUris())
+        openCodexVerificationUrl(deviceCode.verificationUrl);
+    } catch (e) {
+    }
+
+    await refreshStatus();
+    schedulePoll(deviceCode.intervalSeconds);
+  });
+
+  openBrowserBtn.connect('clicked', () => {
+    if (!pendingLogin)
+      return;
+    try {
+      openCodexVerificationUrl(pendingLogin.verificationUrl);
+    } catch (e) {
+      statusRow.subtitle = 'Could not open browser';
+    }
+  });
+
+  cancelBtn.connect('clicked', async () => {
+    stopPolling();
+    pendingLogin = null;
+    await refreshStatus('Device login cancelled');
+  });
+
+  signOutBtn.connect('clicked', async () => {
+    stopPolling();
+    pendingLogin = null;
+    try {
+      await clearCodexAuth();
     } catch (e) {
       statusRow.subtitle = 'Keyring unavailable';
       return;
     }
-    await refreshStatus();
+    await refreshStatus('Signed out');
   });
 
-  clearBtn.connect('clicked', async () => {
-    try {
-      await clearToken('codex');
-    } catch (e) {
-      statusRow.subtitle = 'Keyring unavailable';
-      return;
-    }
-    await refreshStatus();
-  });
-
-  recheckBtn.connect('clicked', () => {
-    refreshStatus();
+  group.connect('destroy', () => {
+    stopPolling();
   });
 
   refreshStatus();

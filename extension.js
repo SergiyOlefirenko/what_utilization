@@ -9,8 +9,8 @@ import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 
 import { lookupToken } from './lib/secrets.js';
-import { lookupCodexAccessToken } from './lib/codexCliAuth.js';
-import { requestJson } from './lib/http.js';
+import { lookupCodexAccessToken } from './lib/codexAuth.js';
+import { requestJson, requestText } from './lib/http.js';
 import { Poller } from './lib/poller.js';
 import { formatPanelLabel, formatCopilotUsage, formatCodexUsage } from './lib/format.js';
 import { fetchCodexUsage } from './lib/providers/codex.js';
@@ -126,7 +126,7 @@ export default class AiUsageExtension extends Extension {
       providers: this._buildProviders(),
       lookupToken: async (name) => {
         if (name === 'codex')
-          return lookupCodexAccessToken({ lookupFallbackToken: lookupToken });
+          return lookupCodexAccessToken({ requestTextFn: requestText });
         return lookupToken(name);
       },
       requestJson,
@@ -182,6 +182,7 @@ export default class AiUsageExtension extends Extension {
       providers.codex = ({ token, requestJson: rj, cancellable }) => fetchCodexUsage({
         token,
         requestJson: rj,
+        requestTextFn: requestText,
         cancellable,
       });
     }
