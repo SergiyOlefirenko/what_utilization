@@ -23,12 +23,16 @@ const MENU_ICON_SIZE = 16;
 
 function createIcon(iconPath, iconSize, styleClass = null) {
   const file = Gio.File.new_for_path(iconPath);
-  return new St.Icon({
+  const props = {
     gicon: new Gio.FileIcon({ file }),
     icon_size: iconSize,
     y_align: Clutter.ActorAlign.CENTER,
-    style_class: styleClass ?? undefined,
-  });
+  };
+
+  if (styleClass)
+    props.style_class = styleClass;
+
+  return new St.Icon(props);
 }
 
 function createPanelProviderItem(iconPath) {
