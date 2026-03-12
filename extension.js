@@ -49,7 +49,7 @@ class AiUsageIndicator extends PanelMenu.Button {
 
     const dailyPercent = enabled.codex && codex?.ok ? codex.dailyPercent : null;
     const weeklyPercent = enabled.codex && codex?.ok ? codex.weeklyPercent : null;
-    const ghPercent = enabled.copilot && copilot?.ok ? copilot.usedPercent : null;
+    const ghPercent = enabled.copilot && copilot?.ok ? copilot.remainingPercent : null;
 
     this._label.text = formatPanelLabel({
       ghPercent,

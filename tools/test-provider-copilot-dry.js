@@ -17,7 +17,7 @@ if (argvHas('--no-token')) {
 
   const r = await fetchCopilotUsage({ token: 'test-token', requestJson, cancellable });
   assert(r.ok, 'expected ok');
-  assertEqual(r.usedPercent, 42);
+  assertEqual(r.remainingPercent, 58);
   assertEqual(r.plan, 'pro');
   assertEqual(calls.length, 1);
   assertEqual(calls[0].url, 'https://api.github.com/copilot_internal/user');

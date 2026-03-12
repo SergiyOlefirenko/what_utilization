@@ -17,7 +17,7 @@ if (argvHas('--no-token')) {
 
   const r = await fetchCodexUsage({ token: 'test-token', requestJson, cancellable });
   assert(r.ok, 'expected ok');
-  assertEqual(r.dailyPercent, 20);
+  assertEqual(r.dailyPercent, 80);
   assertEqual(r.weeklyPercent, 50);
   assertEqual(calls.length, 1);
   assertEqual(calls[0].url, 'https://chatgpt.com/backend-api/wham/usage');
