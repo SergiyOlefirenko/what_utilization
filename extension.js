@@ -1,6 +1,5 @@
 import GObject from 'gi://GObject';
 import St from 'gi://St';
-import Gio from 'gi://Gio';
 import Clutter from 'gi://Clutter';
 
 import { Extension } from 'resource:///org/gnome/shell/extensions/extension.js';
@@ -9,6 +8,7 @@ import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 
 import { lookupToken } from './lib/secrets.js';
+import { lookupCodexAccessToken } from './lib/codexCliAuth.js';
 import { requestJson } from './lib/http.js';
 import { Poller } from './lib/poller.js';
 import { formatPanelLabel } from './lib/format.js';
@@ -71,7 +71,11 @@ export default class AiUsageExtension extends Extension {
 
     this._poller = new Poller({
       providers: this._buildProviders(),
-      lookupToken: async (name) => lookupToken(name),
+      lookupToken: async (name) => {
+        if (name === 'codex')
+          return lookupCodexAccessToken({ lookupFallbackToken: lookupToken });
+        return lookupToken(name);
+      },
       requestJson,
       intervalSeconds: this._settings.get_int('poll-interval-seconds'),
       onUpdate: (name, result, snapshot) => this._indicator.updateState(snapshot, this._providerEnabled),

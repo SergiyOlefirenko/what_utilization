@@ -4,7 +4,7 @@ import { formatCodexStatus, formatCopilotStatus } from '../lib/providerStatus.js
 assertEqual(formatCodexStatus(null, false), 'Codex: disabled');
 assertEqual(formatCopilotStatus(null, false), 'Copilot: disabled');
 
-assertEqual(formatCodexStatus({ ok: false, errorKind: 'not_configured' }, true), 'Codex: not configured');
+assertEqual(formatCodexStatus({ ok: false, errorKind: 'not_configured' }, true), 'Codex: run codex login');
 assertEqual(formatCopilotStatus({ ok: false, errorKind: 'auth' }, true), 'Copilot: auth failed');
 assertEqual(formatCodexStatus({ ok: false, errorKind: 'network' }, true), 'Codex: network error');
 assertEqual(formatCopilotStatus({ ok: false, errorKind: 'parse' }, true), 'Copilot: parse error');
