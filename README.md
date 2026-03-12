@@ -76,8 +76,8 @@ with a real directory and break your linked development setup.
    gnome-extensions prefs ai-usage@serhii.local
    ```
 2. Set up authentication:
-   - In extension preferences, use `Sign in` under Codex to start the OpenAI device-code login flow.
-   - Approve the login in your browser and enter the one-time code if prompted.
+   - In extension preferences, use `Sign in` under Codex to start the OpenAI browser login flow.
+   - Approve the login in your browser and return to extension preferences after the success page appears.
    - Save your GitHub token for Copilot usage endpoint access in the extension keyring.
 3. Optionally disable either provider using `Enable Codex polling` / `Enable GitHub Copilot polling`; this also hides that provider's panel metrics.
 
@@ -118,7 +118,8 @@ GNOME 48 is the tested baseline. GNOME 49/50 are predeclared compatibility targe
 - If you see `Settings schema not found`, run `glib-compile-schemas schemas/`.
 - If keyring test fails with secret-service connection errors, ensure a Secret Service is running.
 - If menu shows `Codex: sign in required`, open extension preferences and use `Sign in` under Codex.
-- If Codex auth keeps expiring, sign out and complete the OpenAI device-code login again so the extension can store a fresh refresh token.
+- If your browser does not open automatically, use `Open browser` in the Codex preferences section.
+- If Codex auth keeps expiring, sign out and complete the OpenAI browser login again so the extension can store a fresh refresh token.
 - If menu shows `auth failed`, re-save the Copilot token or reconnect Codex in Preferences.
 - If `gnome-extensions prefs ai-usage@serhii.local` shows `ImportError` mentioning `extensionUtils.js`,
   your installed files are stale. Re-copy/relink the full extension directory and re-login on Wayland.

@@ -4,8 +4,7 @@ import { assert, assertEqual } from './testlib.js';
 import {
   buildCodexStatus,
   parseCodexAuthSecret,
-  pollCodexDeviceCode,
-  requestCodexDeviceCode,
+  startCodexBrowserLogin,
 } from '../lib/codexAuth.js';
 
 function base64UrlEncode(text) {
@@ -44,50 +43,15 @@ assert(parsed.expiresAtMs > Date.now(), 'expected future expiry');
 assertEqual(buildCodexStatus(parsed), 'Connected (pro, workspace-123)');
 assertEqual(buildCodexStatus(null), 'Not connected');
 
-const deviceCode = await requestCodexDeviceCode({
-  requestJsonFn: async () => ({
-    ok: true,
-    status: 200,
-    json: {
-      device_auth_id: 'device-1',
-      user_code: 'ABCD-EFGH',
-      interval: '7',
-    },
-  }),
-});
+const session = startCodexBrowserLogin();
 
-assert(deviceCode.ok, 'expected device code request to succeed');
-assertEqual(deviceCode.deviceAuthId, 'device-1');
-assertEqual(deviceCode.userCode, 'ABCD-EFGH');
-assertEqual(deviceCode.intervalSeconds, 7);
-assertEqual(deviceCode.verificationUrl, 'https://auth.openai.com/codex/device');
+assert(session.ok, 'expected browser login session');
+assert(session.authUrl.includes('response_type=code'), 'expected authorize url');
+assert(session.authUrl.includes('client_id=app_EMoamEEZ73f0CkXaXp7hrann'), 'expected client id in authorize url');
+assert(session.authUrl.includes('redirect_uri='), 'expected redirect uri in authorize url');
+assert(session.authUrl.includes('code_challenge='), 'expected pkce challenge in authorize url');
 
-const pendingPoll = await pollCodexDeviceCode({
-  deviceAuthId: 'device-1',
-  userCode: 'ABCD-EFGH',
-  requestJsonFn: async () => ({
-    ok: false,
-    status: 403,
-    json: null,
-  }),
-});
-
-assert(!pendingPoll.ok, 'expected pending poll result');
-assertEqual(pendingPoll.errorKind, 'pending');
-
-const completedPoll = await pollCodexDeviceCode({
-  deviceAuthId: 'device-1',
-  userCode: 'ABCD-EFGH',
-  requestJsonFn: async () => ({
-    ok: true,
-    status: 200,
-    json: {
-      authorization_code: 'auth-code',
-      code_verifier: 'verifier',
-    },
-  }),
-});
-
-assert(completedPoll.ok, 'expected completed device code poll');
-assertEqual(completedPoll.authorizationCode, 'auth-code');
-assertEqual(completedPoll.codeVerifier, 'verifier');
+session.cancel();
+const cancelled = await session.completion;
+assert(!cancelled.ok, 'expected cancelled browser login');
+assertEqual(cancelled.errorKind, 'cancelled');

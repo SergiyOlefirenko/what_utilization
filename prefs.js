@@ -1,6 +1,5 @@
 import Adw from 'gi://Adw';
 import Gio from 'gi://Gio';
-import GLib from 'gi://GLib';
 import Gtk from 'gi://Gtk';
 
 import { ExtensionPreferences } from 'resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js';
@@ -10,11 +9,9 @@ import {
   buildCodexStatus,
   canOpenUris,
   clearCodexAuth,
-  exchangeCodexAuthorizationCode,
   loadCodexAuth,
   openCodexVerificationUrl,
-  pollCodexDeviceCode,
-  requestCodexDeviceCode,
+  startCodexBrowserLogin,
 } from './lib/codexAuth.js';
 
 const SETTINGS_SCHEMA = 'org.gnome.shell.extensions.ai-usage';
@@ -75,12 +72,12 @@ function makeCodexRow() {
 
   const detailsRow = new Adw.ActionRow({
     title: 'OpenAI login',
-    subtitle: 'Click Sign in to start the device-code login flow in your browser.',
+    subtitle: 'Click Sign in to open your browser and approve OpenAI access.',
   });
   group.add(detailsRow);
 
-  const codeRow = new Adw.ActionRow({ title: 'One-time code', subtitle: 'Not requested' });
-  group.add(codeRow);
+  const browserRow = new Adw.ActionRow({ title: 'Browser status', subtitle: 'Idle' });
+  group.add(browserRow);
 
   const buttonsRow = new Adw.ActionRow({ title: 'Actions' });
   const signInBtn = new Gtk.Button({ label: 'Sign in' });
@@ -94,13 +91,10 @@ function makeCodexRow() {
   group.add(buttonsRow);
 
   let pendingLogin = null;
-  let pollTimeoutId = 0;
 
-  function stopPolling() {
-    if (pollTimeoutId) {
-      GLib.Source.remove(pollTimeoutId);
-      pollTimeoutId = 0;
-    }
+  function cancelPendingLogin() {
+    pendingLogin?.cancel?.();
+    pendingLogin = null;
   }
 
   function updateActionState(hasAuth) {
@@ -117,11 +111,13 @@ function makeCodexRow() {
     if (result.errorKind === 'network')
       return 'Network error while talking to OpenAI.';
     if (result.errorKind === 'unsupported')
-      return 'Device-code login is not enabled for this OpenAI auth server.';
+      return 'OpenAI login is not enabled for this auth server.';
     if (result.errorKind === 'parse')
       return 'OpenAI auth returned an unexpected response.';
     if (result.errorKind === 'auth')
       return 'Authentication failed. Please sign in again.';
+    if (result.errorKind === 'cancelled')
+      return 'Browser login cancelled';
     if (result.errorKind === 'http')
       return Number.isFinite(result.status) ? `OpenAI auth failed with HTTP ${result.status}.` : fallback;
     return fallback;
@@ -131,126 +127,77 @@ function makeCodexRow() {
     const auth = await loadCodexAuth();
 
     if (pendingLogin) {
-      statusRow.subtitle = statusMessage ?? 'Waiting for approval';
-      detailsRow.subtitle = `Open ${pendingLogin.verificationUrl} and enter the one-time code below. Approval expires in about 15 minutes.`;
-      codeRow.subtitle = pendingLogin.userCode;
+      statusRow.subtitle = statusMessage ?? 'Waiting for browser confirmation';
+      detailsRow.subtitle = 'Finish the OpenAI approval flow in your browser. If no browser opened, press Open browser.';
+      browserRow.subtitle = pendingLogin.authUrl;
       updateActionState(Boolean(auth));
       return;
     }
 
     if (auth) {
       statusRow.subtitle = statusMessage ?? buildCodexStatus(auth);
-      detailsRow.subtitle = 'Connected with OpenAI device login. Tokens are stored securely in the system keyring.';
-      codeRow.subtitle = 'Not needed';
+      detailsRow.subtitle = 'Connected with OpenAI browser login. Tokens are stored securely in the system keyring.';
+      browserRow.subtitle = 'Idle';
       updateActionState(true);
       return;
     }
 
     statusRow.subtitle = statusMessage ?? 'Not connected';
-    detailsRow.subtitle = 'Click Sign in to start the OpenAI device-code login flow.';
-    codeRow.subtitle = 'Not requested';
+    detailsRow.subtitle = 'Click Sign in to open your browser and approve OpenAI access.';
+    browserRow.subtitle = 'Idle';
     updateActionState(false);
   }
 
-  function schedulePoll(delaySeconds) {
-    stopPolling();
-    pollTimeoutId = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, Math.max(1, delaySeconds), () => {
-      pollTimeoutId = 0;
-      pollDeviceCode();
-      return GLib.SOURCE_REMOVE;
-    });
-  }
-
-  async function completeDeviceLogin(deviceToken) {
-    const exchanged = await exchangeCodexAuthorizationCode({
-      authorizationCode: deviceToken.authorizationCode,
-      codeVerifier: deviceToken.codeVerifier,
-    });
-
-    if (!exchanged.ok) {
-      pendingLogin = null;
-      await refreshStatus(describeError(exchanged, 'Could not finish OpenAI device login.'));
-      return;
-    }
-
-    pendingLogin = null;
-    await refreshStatus('Connected');
-  }
-
-  async function pollDeviceCode() {
-    if (!pendingLogin)
-      return;
-
-    if (pendingLogin.expiresAtMs <= Date.now()) {
-      pendingLogin = null;
-      await refreshStatus('Device code expired');
-      return;
-    }
-
-    const result = await pollCodexDeviceCode({
-      deviceAuthId: pendingLogin.deviceAuthId,
-      userCode: pendingLogin.userCode,
-    });
-
-    if (!pendingLogin)
-      return;
-
-    if (result.ok) {
-      await completeDeviceLogin(result);
-      return;
-    }
-
-    if (result.errorKind === 'pending') {
-      await refreshStatus();
-      schedulePoll(pendingLogin.intervalSeconds);
-      return;
-    }
-
-    pendingLogin = null;
-    await refreshStatus(describeError(result, 'Could not complete OpenAI device login.'));
-  }
-
   signInBtn.connect('clicked', async () => {
-    stopPolling();
-    pendingLogin = null;
-    await refreshStatus('Requesting device code...');
+    cancelPendingLogin();
+    await refreshStatus('Starting browser login...');
 
-    const deviceCode = await requestCodexDeviceCode();
-    if (!deviceCode.ok) {
-      await refreshStatus(describeError(deviceCode, 'Could not start OpenAI device login.'));
+    const session = startCodexBrowserLogin();
+    if (!session.ok) {
+      await refreshStatus(describeError(session, 'Could not start OpenAI browser login.'));
       return;
     }
 
-    pendingLogin = deviceCode;
+    pendingLogin = session;
     try {
       if (canOpenUris())
-        openCodexVerificationUrl(deviceCode.verificationUrl);
+        openCodexVerificationUrl(session.authUrl);
     } catch (e) {
     }
 
     await refreshStatus();
-    schedulePoll(deviceCode.intervalSeconds);
+
+    session.completion.then(async (result) => {
+      if (pendingLogin !== session)
+        return;
+
+      pendingLogin = null;
+      if (result.ok) {
+        await refreshStatus('Connected');
+        return;
+      }
+
+      await refreshStatus(describeError(result, 'Could not complete OpenAI browser login.'));
+    });
   });
 
   openBrowserBtn.connect('clicked', () => {
     if (!pendingLogin)
       return;
     try {
-      openCodexVerificationUrl(pendingLogin.verificationUrl);
+      openCodexVerificationUrl(pendingLogin.authUrl);
     } catch (e) {
       statusRow.subtitle = 'Could not open browser';
     }
   });
 
   cancelBtn.connect('clicked', async () => {
-    stopPolling();
-    pendingLogin = null;
-    await refreshStatus('Device login cancelled');
+    cancelPendingLogin();
+    await refreshStatus('Browser login cancelled');
   });
 
   signOutBtn.connect('clicked', async () => {
-    stopPolling();
-    pendingLogin = null;
+    cancelPendingLogin();
     try {
       await clearCodexAuth();
     } catch (e) {
@@ -261,7 +208,7 @@ function makeCodexRow() {
   });
 
   group.connect('destroy', () => {
-    stopPolling();
+    cancelPendingLogin();
   });
 
   refreshStatus();
