@@ -48,7 +48,7 @@ const session = startCodexBrowserLogin();
 assert(session.ok, 'expected browser login session');
 assert(session.authUrl.includes('response_type=code'), 'expected authorize url');
 assert(session.authUrl.includes('client_id=app_EMoamEEZ73f0CkXaXp7hrann'), 'expected client id in authorize url');
-assert(session.authUrl.includes('redirect_uri='), 'expected redirect uri in authorize url');
+assert(session.authUrl.includes(encodeURIComponent('http://localhost:1455/auth/callback')), 'expected fixed localhost redirect uri');
 assert(session.authUrl.includes('code_challenge='), 'expected pkce challenge in authorize url');
 
 session.cancel();
