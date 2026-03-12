@@ -108,6 +108,10 @@ function makeCodexRow() {
   function describeError(result, fallback) {
     if (!result)
       return fallback;
+    if (result.errorMessage)
+      return result.errorMessage;
+    if (result.description)
+      return result.description;
     if (result.errorKind === 'network')
       return 'Network error while talking to OpenAI.';
     if (result.errorKind === 'unsupported')
