@@ -26,8 +26,7 @@ class AiUsageIndicator extends PanelMenu.Button {
     this._label = new St.Label({
       text: formatPanelLabel({
         showGh: enabled.copilot,
-        showDaily: enabled.codex,
-        showWeekly: enabled.codex,
+        showCodex: enabled.codex,
       }),
       y_align: Clutter.ActorAlign.CENTER,
     });
@@ -56,8 +55,7 @@ class AiUsageIndicator extends PanelMenu.Button {
       dailyPercent,
       weeklyPercent,
       showGh: enabled.copilot,
-      showDaily: enabled.codex,
-      showWeekly: enabled.codex,
+      showCodex: enabled.codex,
     });
     this._codexItem.label.text = formatCodexStatus(codex, enabled.codex);
     this._copilotItem.label.text = formatCopilotStatus(copilot, enabled.copilot);
