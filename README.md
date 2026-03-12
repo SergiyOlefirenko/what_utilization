@@ -1,12 +1,12 @@
 # AI Usage Indicator (GNOME Shell Extension)
 
-Shows a small panel label with:
+Shows a small panel label with remaining quota percent:
 
 `gh:<N>% d:<N>% w:<N>%`
 
-- `gh` is GitHub Copilot usage percent
-- `d` is Codex daily usage percent
-- `w` is Codex weekly usage percent
+- `gh` is GitHub Copilot remaining percent
+- `d` is Codex daily remaining percent
+- `w` is Codex weekly remaining percent
 
 Tokens are stored in the system keyring (libsecret). No tokens are stored in GSettings.
 
@@ -78,7 +78,7 @@ with a real directory and break your linked development setup.
 2. Save tokens in the keyring:
    - Codex token for `chatgpt.com/backend-api/wham/usage`.
    - GitHub token for Copilot usage endpoint access.
-3. Optionally disable either provider using `Enable Codex polling` / `Enable GitHub Copilot polling`.
+3. Optionally disable either provider using `Enable Codex polling` / `Enable GitHub Copilot polling`; this also hides that provider's panel metrics.
 
 ## Removal (uninstall)
 
