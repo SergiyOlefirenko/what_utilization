@@ -1,6 +1,14 @@
 import { assertEqual, assert } from './testlib.js';
 import { Poller } from '../lib/poller.js';
 
+function deferred() {
+  let resolve;
+  const promise = new Promise((r) => {
+    resolve = r;
+  });
+  return { promise, resolve };
+}
+
 function makePoller({ providerResult, intervalSeconds = 10, backoffBaseSeconds = 5 }) {
   return new Poller({
     providers: {
@@ -49,3 +57,30 @@ p3.setProviders({
 });
 assert('codex' in p3.snapshot, 'expected codex to remain in snapshot');
 assert(!('copilot' in p3.snapshot), 'expected copilot to be pruned from snapshot');
+
+let updates = 0;
+const lookupGate = deferred();
+const p4 = new Poller({
+  providers: {
+    codex: async () => ({ ok: false, errorKind: 'network' }),
+  },
+  lookupToken: async () => await lookupGate.promise,
+  requestJson: async () => ({ ok: true, status: 200, json: {} }),
+  intervalSeconds: 10,
+  onUpdate: () => {
+    updates += 1;
+  },
+  backoffBaseSeconds: 5,
+});
+
+const inFlight = p4.pollOnce();
+p4.stop();
+lookupGate.resolve('dummy');
+const aborted = await inFlight;
+
+assertEqual(aborted, null, 'expected aborted poll to resolve to null');
+assertEqual(updates, 0, 'expected no updates from stale poll');
+assertEqual(Object.keys(p4.snapshot).length, 0, 'expected stale poll snapshot to stay empty');
+assertEqual(p4._backoff.failures, 0, 'expected stale poll not to affect backoff');
+assertEqual(p4._cancellable, null, 'expected stale poll not to restore cancellable');
+assertEqual(p4._inFlight, false, 'expected poller to remain idle after stop');
