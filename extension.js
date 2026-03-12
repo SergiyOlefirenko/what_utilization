@@ -171,8 +171,8 @@ export default class AiUsageExtension extends Extension {
 
   _buildIconPaths() {
     return {
-      codex: `${this.path}/assets/icons/providers/codex.svg`,
-      copilot: `${this.path}/assets/icons/providers/githubcopilot.svg`,
+      codex: `${this.path}/assets/icons/providers/codex-symbolic.svg`,
+      copilot: `${this.path}/assets/icons/providers/githubcopilot-symbolic.svg`,
     };
   }
 
