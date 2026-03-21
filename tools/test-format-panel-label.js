@@ -1,5 +1,10 @@
 import { assertEqual } from './testlib.js';
-import { formatPanelLabel } from '../lib/format.js';
+import { formatPanelLabel, formatCopilotUsage, formatCodexUsage } from '../lib/format.js';
+
+assertEqual(formatCopilotUsage(), 'gh: --%');
+assertEqual(formatCopilotUsage(58), 'gh: 58%');
+assertEqual(formatCodexUsage(), '5h: --% w: --%');
+assertEqual(formatCodexUsage({ dailyPercent: 93, weeklyPercent: 98 }), '5h: 93% w: 98%');
 
 assertEqual(formatPanelLabel(), 'gh: --% 5h: --% w: --%');
 assertEqual(formatPanelLabel({ ghPercent: 0, dailyPercent: 1, weeklyPercent: 2 }), 'gh: 0% 5h: 1% w: 2%');

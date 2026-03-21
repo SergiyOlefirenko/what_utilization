@@ -1,7 +1,7 @@
 import GObject from 'gi://GObject';
 import St from 'gi://St';
-import Gio from 'gi://Gio';
 import Clutter from 'gi://Clutter';
+import Gio from 'gi://Gio';
 
 import { Extension } from 'resource:///org/gnome/shell/extensions/extension.js';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
@@ -9,37 +9,89 @@ import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 
 import { lookupToken } from './lib/secrets.js';
-import { requestJson } from './lib/http.js';
+import { lookupCodexAccessToken } from './lib/codexAuth.js';
+import { requestJson, requestText } from './lib/http.js';
 import { Poller } from './lib/poller.js';
-import { formatPanelLabel } from './lib/format.js';
+import { formatPanelLabel, formatCopilotUsage, formatCodexUsage } from './lib/format.js';
 import { fetchCodexUsage } from './lib/providers/codex.js';
 import { fetchCopilotUsage } from './lib/providers/copilot.js';
 import { formatCodexStatus, formatCopilotStatus } from './lib/providerStatus.js';
 
 const SETTINGS_SCHEMA = 'org.gnome.shell.extensions.ai-usage';
+const PANEL_ICON_SIZE = 14;
+const MENU_ICON_SIZE = 16;
+
+function createIcon(iconPath, iconSize, styleClass = null) {
+  const file = Gio.File.new_for_path(iconPath);
+  const props = {
+    gicon: new Gio.FileIcon({ file }),
+    icon_size: iconSize,
+    y_align: Clutter.ActorAlign.CENTER,
+    style: 'color: #ffffff;',
+  };
+
+  if (styleClass)
+    props.style_class = styleClass;
+
+  return new St.Icon(props);
+}
+
+function createPanelProviderItem(iconPath) {
+  const box = new St.BoxLayout({
+    y_align: Clutter.ActorAlign.CENTER,
+    style: 'spacing: 4px;',
+  });
+  const icon = createIcon(iconPath, PANEL_ICON_SIZE, 'system-status-icon');
+  const label = new St.Label({ y_align: Clutter.ActorAlign.CENTER });
+  box.add_child(icon);
+  box.add_child(label);
+  return { box, label };
+}
+
+function createMenuProviderItem(iconPath, text) {
+  const item = new PopupMenu.PopupBaseMenuItem({ reactive: false });
+  const icon = createIcon(iconPath, MENU_ICON_SIZE);
+  const label = new St.Label({
+    text,
+    x_expand: true,
+    y_align: Clutter.ActorAlign.CENTER,
+  });
+  item.add_child(icon);
+  item.add_child(label);
+  return { item, label };
+}
 
 const AiUsageIndicator = GObject.registerClass(
 class AiUsageIndicator extends PanelMenu.Button {
-  constructor(enabled = { codex: true, copilot: true }) {
+  constructor(iconPaths, enabled = { codex: true, copilot: true }) {
     super(0.0, 'AI Usage Indicator');
 
-    this._label = new St.Label({
-      text: formatPanelLabel({
-        showGh: enabled.copilot,
-        showCodex: enabled.codex,
-      }),
+    this._panelBox = new St.BoxLayout({
+      y_align: Clutter.ActorAlign.CENTER,
+      style: 'spacing: 8px;',
+    });
+    this.add_child(this._panelBox);
+
+    this._copilotPanel = createPanelProviderItem(iconPaths.copilot);
+    this._codexPanel = createPanelProviderItem(iconPaths.codex);
+    this._emptyLabel = new St.Label({
+      text: formatPanelLabel({ showGh: false, showCodex: false }),
       y_align: Clutter.ActorAlign.CENTER,
     });
-    this.add_child(this._label);
+    this._panelBox.add_child(this._copilotPanel.box);
+    this._panelBox.add_child(this._codexPanel.box);
+    this._panelBox.add_child(this._emptyLabel);
 
     this._menuHeader = new PopupMenu.PopupMenuItem('AI Usage', { reactive: false });
     this.menu.addMenuItem(this._menuHeader);
     this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
 
-    this._codexItem = new PopupMenu.PopupMenuItem('Codex: --', { reactive: false });
-    this._copilotItem = new PopupMenu.PopupMenuItem('Copilot: --', { reactive: false });
-    this.menu.addMenuItem(this._codexItem);
-    this.menu.addMenuItem(this._copilotItem);
+    this._codexMenu = createMenuProviderItem(iconPaths.codex, 'Codex: --');
+    this._copilotMenu = createMenuProviderItem(iconPaths.copilot, 'Copilot: --');
+    this.menu.addMenuItem(this._codexMenu.item);
+    this.menu.addMenuItem(this._copilotMenu.item);
+
+    this.updateState({}, enabled);
   }
 
   updateState(snapshot, enabled = { codex: true, copilot: true }) {
@@ -50,15 +102,16 @@ class AiUsageIndicator extends PanelMenu.Button {
     const weeklyPercent = enabled.codex && codex?.ok ? codex.weeklyPercent : null;
     const ghPercent = enabled.copilot && copilot?.ok ? copilot.remainingPercent : null;
 
-    this._label.text = formatPanelLabel({
-      ghPercent,
-      dailyPercent,
-      weeklyPercent,
-      showGh: enabled.copilot,
-      showCodex: enabled.codex,
-    });
-    this._codexItem.label.text = formatCodexStatus(codex, enabled.codex);
-    this._copilotItem.label.text = formatCopilotStatus(copilot, enabled.copilot);
+    this._copilotPanel.label.text = formatCopilotUsage(ghPercent);
+    this._codexPanel.label.text = formatCodexUsage({ dailyPercent, weeklyPercent });
+    this._copilotPanel.box.visible = enabled.copilot;
+    this._codexPanel.box.visible = enabled.codex;
+    this._emptyLabel.visible = !enabled.copilot && !enabled.codex;
+
+    this._codexMenu.label.text = formatCodexStatus(codex, enabled.codex);
+    this._copilotMenu.label.text = formatCopilotStatus(copilot, enabled.copilot);
+    this._codexMenu.item.visible = enabled.codex;
+    this._copilotMenu.item.visible = enabled.copilot;
   }
 });
 
@@ -66,12 +119,16 @@ export default class AiUsageExtension extends Extension {
   enable() {
     this._settings = this.getSettings(SETTINGS_SCHEMA);
     this._providerEnabled = this._readProviderEnabled();
-    this._indicator = new AiUsageIndicator(this._providerEnabled);
+    this._indicator = new AiUsageIndicator(this._buildIconPaths(), this._providerEnabled);
     Main.panel.addToStatusArea(this.uuid, this._indicator);
 
     this._poller = new Poller({
       providers: this._buildProviders(),
-      lookupToken: async (name) => lookupToken(name),
+      lookupToken: async (name) => {
+        if (name === 'codex')
+          return lookupCodexAccessToken({ requestTextFn: requestText });
+        return lookupToken(name);
+      },
       requestJson,
       intervalSeconds: this._settings.get_int('poll-interval-seconds'),
       onUpdate: (name, result, snapshot) => this._indicator.updateState(snapshot, this._providerEnabled),
@@ -112,12 +169,20 @@ export default class AiUsageExtension extends Extension {
     };
   }
 
+  _buildIconPaths() {
+    return {
+      codex: `${this.path}/assets/icons/providers/codex-symbolic.svg`,
+      copilot: `${this.path}/assets/icons/providers/githubcopilot-symbolic.svg`,
+    };
+  }
+
   _buildProviders() {
     const providers = {};
     if (this._providerEnabled?.codex) {
       providers.codex = ({ token, requestJson: rj, cancellable }) => fetchCodexUsage({
         token,
         requestJson: rj,
+        requestTextFn: requestText,
         cancellable,
       });
     }

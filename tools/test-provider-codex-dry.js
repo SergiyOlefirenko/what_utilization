@@ -23,4 +23,30 @@ if (argvHas('--no-token')) {
   assertEqual(calls[0].url, 'https://chatgpt.com/backend-api/wham/usage');
   assertEqual(calls[0].headers.Authorization, 'Bearer test-token');
   assertEqual(calls[0].cancellable, cancellable);
+
+  const retryCalls = [];
+  const retried = await fetchCodexUsage({
+    token: 'expired-token',
+    requestTextFn: async () => ({ status: 200, text: JSON.stringify({ access_token: 'fresh-token', refresh_token: 'fresh-refresh' }) }),
+    loadAuthFn: async () => ({ accessToken: 'expired-token', refreshToken: 'refresh-token' }),
+    refreshAuthFn: async () => ({
+      ok: true,
+      auth: {
+        accessToken: 'fresh-token',
+        refreshToken: 'fresh-refresh',
+      },
+    }),
+    requestJson: async (opts) => {
+      retryCalls.push(opts);
+      if (retryCalls.length === 1)
+        return { ok: false, status: 401, json: null };
+      return { ok: true, status: 200, json: fixture };
+    },
+    cancellable,
+  });
+
+  assert(retried.ok, 'expected refresh retry to succeed');
+  assertEqual(retryCalls.length, 2);
+  assertEqual(retryCalls[0].headers.Authorization, 'Bearer expired-token');
+  assertEqual(retryCalls[1].headers.Authorization, 'Bearer fresh-token');
 }

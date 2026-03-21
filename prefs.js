@@ -5,16 +5,24 @@ import Gtk from 'gi://Gtk';
 import { ExtensionPreferences } from 'resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js';
 
 import { lookupToken, storeToken, clearToken } from './lib/secrets.js';
+import {
+  buildCodexStatus,
+  canOpenUris,
+  clearCodexAuth,
+  loadCodexAuth,
+  openCodexVerificationUrl,
+  startCodexBrowserLogin,
+} from './lib/codexAuth.js';
 
 const SETTINGS_SCHEMA = 'org.gnome.shell.extensions.ai-usage';
 
-function makeProviderRow({ title, provider }) {
+function makeTokenProviderRow({ title, provider, tokenTitle = 'Token' }) {
   const group = new Adw.PreferencesGroup({ title });
 
   const statusRow = new Adw.ActionRow({ title: 'Token status', subtitle: 'Checking...' });
   group.add(statusRow);
 
-  const entryRow = new Adw.ActionRow({ title: 'Token' });
+  const entryRow = new Adw.ActionRow({ title: tokenTitle });
   const entry = new Gtk.PasswordEntry({ hexpand: true, show_peek_icon: true });
   entryRow.add_suffix(entry);
   group.add(entryRow);
@@ -57,6 +65,161 @@ function makeProviderRow({ title, provider }) {
   return group;
 }
 
+function makeCodexRow() {
+  const group = new Adw.PreferencesGroup({ title: 'Codex' });
+  const statusRow = new Adw.ActionRow({ title: 'Authentication', subtitle: 'Checking...' });
+  group.add(statusRow);
+
+  const detailsRow = new Adw.ActionRow({
+    title: 'OpenAI login',
+    subtitle: 'Click Sign in to open your browser and approve OpenAI access.',
+  });
+  group.add(detailsRow);
+
+  const browserRow = new Adw.ActionRow({ title: 'Browser status', subtitle: 'Idle' });
+  group.add(browserRow);
+
+  const buttonsRow = new Adw.ActionRow({ title: 'Actions' });
+  const signInBtn = new Gtk.Button({ label: 'Sign in' });
+  const openBrowserBtn = new Gtk.Button({ label: 'Open browser' });
+  const cancelBtn = new Gtk.Button({ label: 'Cancel' });
+  const signOutBtn = new Gtk.Button({ label: 'Sign out' });
+  buttonsRow.add_suffix(signInBtn);
+  buttonsRow.add_suffix(openBrowserBtn);
+  buttonsRow.add_suffix(cancelBtn);
+  buttonsRow.add_suffix(signOutBtn);
+  group.add(buttonsRow);
+
+  let pendingLogin = null;
+
+  function cancelPendingLogin() {
+    pendingLogin?.cancel?.();
+    pendingLogin = null;
+  }
+
+  function updateActionState(hasAuth) {
+    const pending = pendingLogin !== null;
+    signInBtn.sensitive = !pending;
+    openBrowserBtn.sensitive = pending && canOpenUris();
+    cancelBtn.sensitive = pending;
+    signOutBtn.sensitive = hasAuth;
+  }
+
+  function describeError(result, fallback) {
+    if (!result)
+      return fallback;
+    if (result.errorMessage)
+      return result.errorMessage;
+    if (result.description)
+      return result.description;
+    if (result.errorKind === 'network')
+      return 'Network error while talking to OpenAI.';
+    if (result.errorKind === 'unsupported')
+      return 'OpenAI login is not enabled for this auth server.';
+    if (result.errorKind === 'parse')
+      return 'OpenAI auth returned an unexpected response.';
+    if (result.errorKind === 'auth')
+      return 'Authentication failed. Please sign in again.';
+    if (result.errorKind === 'cancelled')
+      return 'Browser login cancelled';
+    if (result.errorKind === 'http')
+      return Number.isFinite(result.status) ? `OpenAI auth failed with HTTP ${result.status}.` : fallback;
+    return fallback;
+  }
+
+  async function refreshStatus(statusMessage = null) {
+    const auth = await loadCodexAuth();
+
+    if (pendingLogin) {
+      statusRow.subtitle = statusMessage ?? 'Waiting for browser confirmation';
+      detailsRow.subtitle = 'Finish the OpenAI approval flow in your browser. If no browser opened, press Open browser.';
+      browserRow.subtitle = pendingLogin.authUrl;
+      updateActionState(Boolean(auth));
+      return;
+    }
+
+    if (auth) {
+      statusRow.subtitle = statusMessage ?? buildCodexStatus(auth);
+      detailsRow.subtitle = 'Connected with OpenAI browser login. Tokens are stored securely in the system keyring.';
+      browserRow.subtitle = 'Idle';
+      updateActionState(true);
+      return;
+    }
+
+    statusRow.subtitle = statusMessage ?? 'Not connected';
+    detailsRow.subtitle = 'Click Sign in to open your browser and approve OpenAI access.';
+    browserRow.subtitle = 'Idle';
+    updateActionState(false);
+  }
+
+  signInBtn.connect('clicked', async () => {
+    cancelPendingLogin();
+    await refreshStatus('Starting browser login...');
+
+    const session = startCodexBrowserLogin();
+    if (!session.ok) {
+      await refreshStatus(describeError(session, 'Could not start OpenAI browser login.'));
+      return;
+    }
+
+    pendingLogin = session;
+    try {
+      if (canOpenUris())
+        openCodexVerificationUrl(session.authUrl);
+    } catch (e) {
+    }
+
+    await refreshStatus();
+
+    session.completion.then(async (result) => {
+      if (pendingLogin !== session)
+        return;
+
+      pendingLogin = null;
+      if (result.ok) {
+        await refreshStatus('Connected');
+        return;
+      }
+
+      await refreshStatus(describeError(result, 'Could not complete OpenAI browser login.'));
+    });
+  });
+
+  openBrowserBtn.connect('clicked', () => {
+    if (!pendingLogin)
+      return;
+    try {
+      openCodexVerificationUrl(pendingLogin.authUrl);
+    } catch (e) {
+      statusRow.subtitle = 'Could not open browser';
+    }
+  });
+
+  cancelBtn.connect('clicked', async () => {
+    cancelPendingLogin();
+    await refreshStatus('Browser login cancelled');
+  });
+
+  signOutBtn.connect('clicked', async () => {
+    cancelPendingLogin();
+    try {
+      await clearCodexAuth();
+    } catch (e) {
+      statusRow.subtitle = 'Keyring unavailable';
+      return;
+    }
+    await refreshStatus('Signed out');
+  });
+
+  group.connect('destroy', () => {
+    cancelPendingLogin();
+  });
+
+  refreshStatus();
+
+  return group;
+}
+
 export default class AiUsagePrefs extends ExtensionPreferences {
   fillPreferencesWindow(window) {
     const settings = this.getSettings(SETTINGS_SCHEMA);
@@ -91,8 +254,8 @@ export default class AiUsagePrefs extends ExtensionPreferences {
     copilotEnabledRow.activatable_widget = copilotEnabledSwitch;
     general.add(copilotEnabledRow);
 
-    const codexGroup = makeProviderRow({ title: 'Codex', provider: 'codex' });
-    const copilotGroup = makeProviderRow({ title: 'GitHub Copilot', provider: 'copilot' });
+    const codexGroup = makeCodexRow();
+    const copilotGroup = makeTokenProviderRow({ title: 'GitHub Copilot', provider: 'copilot' });
     page.add(codexGroup);
     page.add(copilotGroup);
   }
