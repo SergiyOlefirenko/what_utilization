@@ -1,9 +1,9 @@
 {
-  "uuid": "ai-usage@serhii.local",
-  "settings-schema": "org.gnome.shell.extensions.ai-usage",
+  "uuid": "ai-usage@sergiy.olefirenko.gmail.com",
+  "url": "https://github.com/SergiyOlefirenko/what_utilization",
   "name": "AI Usage Indicator",
-  "description": "Panel indicator for GitHub Copilot and Codex usage.",
+  "author": "Serhii Olefirenko <sergiy.olefirenko@gmail.com>",
+  "description": "Panel indicator for Codex usage.",
   "shell-version": ["48", "49", "50"],
-  "version": 1,
-  "url": "https://github.com/SergiyOlefirenko/what_utilization"
+  "version": 1
 }
