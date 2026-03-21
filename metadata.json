@@ -1,5 +1,6 @@
 {
   "uuid": "ai-usage@sergiy.olefirenko.gmail.com",
+  "settings-schema": "org.gnome.shell.extensions.ai-usage",
   "url": "https://github.com/SergiyOlefirenko/what_utilization",
   "name": "AI Usage Indicator",
   "author": "Serhii Olefirenko <sergiy.olefirenko@gmail.com>",
