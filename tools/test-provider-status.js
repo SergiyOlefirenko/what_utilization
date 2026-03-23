@@ -12,43 +12,53 @@ assertEqual(formatCodexStatus({ ok: false, errorKind: 'http', status: 429 }, tru
 
 assertEqual(
   formatCodexStatus({ ok: true, planType: 'codex-pro', windows: [] }, true),
-  'Codex\n - plan: codex-pro'
+  'Codex: codex-pro'
 );
 assertEqual(
   formatCodexStatus({
     ok: true,
     planType: 'codex-pro',
     windows: [
-      { label: 'Day', resetAtMs: Date.UTC(2026, 2, 3) },
-      { label: 'Week', resetAtMs: Date.UTC(2026, 2, 10) },
+      { label: 'Day', resetAtMs: new Date(2026, 2, 3, 5, 7).getTime() },
+      { label: 'Week', resetAtMs: new Date(2026, 2, 10, 16, 45).getTime() },
     ],
   }, true),
-  'Codex\n - plan: codex-pro\n - 5h next reset: 2026-03-03\n - w next reset: 2026-03-10'
+  'Codex: codex-pro\n - 5h: 2026-03-03 05:07\n - w: 2026-03-10 16:45'
 );
 assertEqual(
   formatCodexStatus({
     ok: true,
     planType: 'plus',
     windows: [
-      { label: 'Day', resetAtMs: Date.UTC(2026, 2, 3) },
+      { label: 'Day', resetAtMs: new Date(2026, 2, 3, 9, 3).getTime() },
       { label: 'Week', resetAtMs: null },
     ],
   }, true),
-  'Codex\n - plan: plus\n - 5h next reset: 2026-03-03'
+  'Codex: plus\n - 5h: 2026-03-03 09:03'
 );
 assertEqual(
   formatCodexStatus({ ok: true, planType: 'pro' }, true),
-  'Codex\n - plan: pro'
+  'Codex: pro'
+);
+assertEqual(
+  formatCodexStatus({
+    ok: true,
+    planType: 'broken',
+    windows: [
+      { label: 'Day', resetAtMs: 9e15 },
+    ],
+  }, true),
+  'Codex: broken'
 );
 assertEqual(
   formatCodexStatus({
     ok: true,
     planType: 'team',
     windows: [
-      { label: 'Week', resetAtMs: Date.UTC(2026, 2, 10) },
+      { label: 'Week', resetAtMs: new Date(2026, 2, 10, 0, 2).getTime() },
     ],
   }, true),
-  'Codex\n - plan: team\n - w next reset: 2026-03-10'
+  'Codex: team\n - w: 2026-03-10 00:02'
 );
 assertEqual(
   formatCopilotStatus({ ok: true, plan: 'pro', resetDate: '2026-03-31' }, true),

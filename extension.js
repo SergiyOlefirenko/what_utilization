@@ -21,12 +21,12 @@ const SETTINGS_SCHEMA = 'org.gnome.shell.extensions.ai-usage';
 const PANEL_ICON_SIZE = 14;
 const MENU_ICON_SIZE = 16;
 
-function createIcon(iconPath, iconSize, styleClass = null) {
+function createIcon(iconPath, iconSize, styleClass = null, yAlign = Clutter.ActorAlign.CENTER) {
   const file = Gio.File.new_for_path(iconPath);
   const props = {
     gicon: new Gio.FileIcon({ file }),
     icon_size: iconSize,
-    y_align: Clutter.ActorAlign.CENTER,
+    y_align: yAlign,
     style: 'color: #ffffff;',
   };
 
@@ -48,13 +48,13 @@ function createPanelProviderItem(iconPath) {
   return { box, label };
 }
 
-function createMenuProviderItem(iconPath, text) {
+function createMenuProviderItem(iconPath, text, yAlign = Clutter.ActorAlign.CENTER) {
   const item = new PopupMenu.PopupBaseMenuItem({ reactive: false });
-  const icon = createIcon(iconPath, MENU_ICON_SIZE);
+  const icon = createIcon(iconPath, MENU_ICON_SIZE, null, yAlign);
   const label = new St.Label({
     text,
     x_expand: true,
-    y_align: Clutter.ActorAlign.CENTER,
+    y_align: yAlign,
   });
   item.add_child(icon);
   item.add_child(label);
@@ -82,11 +82,7 @@ class AiUsageIndicator extends PanelMenu.Button {
     this._panelBox.add_child(this._codexPanel.box);
     this._panelBox.add_child(this._emptyLabel);
 
-    this._menuHeader = new PopupMenu.PopupMenuItem('AI Usage', { reactive: false });
-    this.menu.addMenuItem(this._menuHeader);
-    this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
-
-    this._codexMenu = createMenuProviderItem(iconPaths.codex, 'Codex: --');
+    this._codexMenu = createMenuProviderItem(iconPaths.codex, 'Codex: --', Clutter.ActorAlign.START);
     this._copilotMenu = createMenuProviderItem(iconPaths.copilot, 'Copilot: --');
     this.menu.addMenuItem(this._codexMenu.item);
     this.menu.addMenuItem(this._copilotMenu.item);
