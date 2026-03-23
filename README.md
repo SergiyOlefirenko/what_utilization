@@ -12,7 +12,7 @@ Tokens are stored in the system keyring (libsecret). No tokens are stored in GSe
 
 ## Installation
 
-Extension UUID: `ai-usage@serhii.local`
+Extension UUID: `ai-usage@sergiy.olefirenko.gmail.com`
 Declared GNOME Shell compatibility: `48`, `49`, `50`.
 
 ### Option A: Local development install (symlink, recommended while developing)
@@ -25,15 +25,15 @@ Declared GNOME Shell compatibility: `48`, `49`, `50`.
 3. Create a symlink into your user extensions directory:
    ```bash
    mkdir -p ~/.local/share/gnome-shell/extensions
-   ln -sfn "$(pwd)" ~/.local/share/gnome-shell/extensions/ai-usage@serhii.local
+   ln -sfn "$(pwd)" ~/.local/share/gnome-shell/extensions/ai-usage@sergiy.olefirenko.gmail.com
    ```
 4. Enable the extension:
    ```bash
-   gnome-extensions enable ai-usage@serhii.local
+   gnome-extensions enable ai-usage@sergiy.olefirenko.gmail.com
    ```
 5. Open preferences:
    ```bash
-   gnome-extensions prefs ai-usage@serhii.local
+   gnome-extensions prefs ai-usage@sergiy.olefirenko.gmail.com
    ```
 
 Important: if your local extension install path is a symlink, do not run
@@ -44,24 +44,24 @@ with a real directory and break your linked development setup.
 
 1. Create install directory:
    ```bash
-   mkdir -p ~/.local/share/gnome-shell/extensions/ai-usage@serhii.local
+   mkdir -p ~/.local/share/gnome-shell/extensions/ai-usage@sergiy.olefirenko.gmail.com
    ```
 2. From repository root, copy required extension files into it:
    ```bash
-   cp -r metadata.json extension.js prefs.js lib schemas assets ~/.local/share/gnome-shell/extensions/ai-usage@serhii.local/
+   cp -r metadata.json extension.js prefs.js lib schemas assets ~/.local/share/gnome-shell/extensions/ai-usage@sergiy.olefirenko.gmail.com/
    ```
 3. Verify metadata path and UUID:
    ```bash
-   test -f ~/.local/share/gnome-shell/extensions/ai-usage@serhii.local/metadata.json
-   grep -n '"uuid"' ~/.local/share/gnome-shell/extensions/ai-usage@serhii.local/metadata.json
+   test -f ~/.local/share/gnome-shell/extensions/ai-usage@sergiy.olefirenko.gmail.com/metadata.json
+   grep -n '"uuid"' ~/.local/share/gnome-shell/extensions/ai-usage@sergiy.olefirenko.gmail.com/metadata.json
    ```
 4. Compile schemas inside installed extension directory:
    ```bash
-   glib-compile-schemas ~/.local/share/gnome-shell/extensions/ai-usage@serhii.local/schemas
+   glib-compile-schemas ~/.local/share/gnome-shell/extensions/ai-usage@sergiy.olefirenko.gmail.com/schemas
    ```
 5. Enable extension:
    ```bash
-   gnome-extensions enable ai-usage@serhii.local
+   gnome-extensions enable ai-usage@sergiy.olefirenko.gmail.com
    ```
 
 ### Apply GNOME Shell changes
@@ -73,7 +73,7 @@ with a real directory and break your linked development setup.
 
 1. Open extension preferences:
    ```bash
-   gnome-extensions prefs ai-usage@serhii.local
+   gnome-extensions prefs ai-usage@sergiy.olefirenko.gmail.com
    ```
 2. Set up authentication:
    - In extension preferences, use `Sign in` under Codex to start the OpenAI browser login flow.
@@ -88,11 +88,11 @@ with a real directory and break your linked development setup.
 
 1. Disable the extension:
    ```bash
-   gnome-extensions disable ai-usage@serhii.local
+   gnome-extensions disable ai-usage@sergiy.olefirenko.gmail.com
    ```
 2. Delete installed extension directory/symlink:
    ```bash
-   rm -rf ~/.local/share/gnome-shell/extensions/ai-usage@serhii.local
+   rm -rf ~/.local/share/gnome-shell/extensions/ai-usage@sergiy.olefirenko.gmail.com
    ```
 3. Apply GNOME Shell changes (restart shell on X11, re-login on Wayland).
 
@@ -123,17 +123,17 @@ GNOME 48 is the tested baseline. GNOME 49/50 are predeclared compatibility targe
 - If the browser cannot reach `http://localhost:1455/auth/callback`, check whether a firewall, browser policy, or another local process is blocking port `1455`.
 - If Codex auth keeps expiring, sign out and complete the OpenAI browser login again so the extension can store a fresh refresh token.
 - If menu shows `auth failed`, re-save the Copilot token or reconnect Codex in Preferences.
-- If `gnome-extensions prefs ai-usage@serhii.local` shows `ImportError` mentioning `extensionUtils.js`,
+- If `gnome-extensions prefs ai-usage@sergiy.olefirenko.gmail.com` shows `ImportError` mentioning `extensionUtils.js`,
   your installed files are stale. Re-copy/relink the full extension directory and re-login on Wayland.
-- If `gnome-extensions prefs ai-usage@serhii.local` shows
+- If `gnome-extensions prefs ai-usage@sergiy.olefirenko.gmail.com` shows
   `Expected type string for argument 'schema_id' but got type undefined`,
   your installed `metadata.json` is missing `settings-schema` or is stale; re-copy/relink the extension directory and re-login.
-- If `gnome-extensions enable ai-usage@serhii.local` says `Extension "... does not exist"`:
-  - Verify directory path is exactly `~/.local/share/gnome-shell/extensions/ai-usage@serhii.local`.
-  - Verify installed `metadata.json` has `"uuid": "ai-usage@serhii.local"`.
+- If `gnome-extensions enable ai-usage@sergiy.olefirenko.gmail.com` says `Extension "... does not exist"`:
+  - Verify directory path is exactly `~/.local/share/gnome-shell/extensions/ai-usage@sergiy.olefirenko.gmail.com`.
+  - Verify installed `metadata.json` has `"uuid": "ai-usage@sergiy.olefirenko.gmail.com"`.
   - Verify current GNOME major version is in `"shell-version"` list.
   - Check discovery output:
     ```bash
-    gnome-extensions list | grep ai-usage@serhii.local
+    gnome-extensions list | grep ai-usage@sergiy.olefirenko.gmail.com
     ```
   - On Wayland, log out and log back in after install changes.

@@ -1,1 +1,3 @@
-/.sisyphus
+.agents/
+.codex/
+.opencode/
